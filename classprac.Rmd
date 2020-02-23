@@ -102,8 +102,17 @@ anova(olrmod1,olrmod1_nom)
 ```{r}
 library(haven)
 lowbwt <- read_dta("lowbwt.dta")
+lowbwt <- lowbwt %>% mutate_if(is.labelled, funs(as_factor(.)))
 head(lowbwt)
+descr(lowbwt)
+freq(lowbwt)
+lowbwt1 <- lowbwt %>% 
+  select(smoke, weight) %>% 
+  mutate(bwtcat = cut(weight,
+                      breaks = c(0,2500,3000,3500, 5000),
+                      labels = c("<= 2500", "2501 - 3000", "3001 - 3500", "> 3500")))
 ```
+
 
 Variables
 
@@ -133,5 +142,89 @@ Variables
   - 0 - none
   - 1 - 1
   - 2 - 2, etc
-  
-  
+- weight: birth weight
+
+
+```{r}
+freq(lowbwt1$bwtcat)
+```
+
+```{r}
+lowbwt1$bwtcata <- ordered(lowbwt1$bwtcat, levels=c("> 3500", "3001 - 3500", "2501 - 3000", "<= 2500"))
+freq(lowbwt1$bwtcata)
+freq(lowbwt1$bwtcat)
+```
+
+## multinomial or baseline logit model
+
+baseline logit model - multiple binomial - compare to lower group
+
+### g1 (> 3500) vs g2 (3001 - 3500)
+
+```{r}
+lowbwt1a <- lowbwt1[lowbwt1$bwtcata == "> 3500"|lowbwt1$bwtcata == "3001 - 3500",]
+freq(lowbwt1a$bwtcata)
+blm1 <- glm(bwtcata ~ smoke, family = binomial, data = lowbwt1a)
+blm1
+summary(blm1)
+```
+
+### g1 (> 3500) vs g3 (2501 - 3000)
+
+```{r}
+lowbwt1b <- lowbwt1[lowbwt1$bwtcata == "> 3500"|lowbwt1$bwtcata == "2501 - 3000",]
+freq(lowbwt1b$bwtcata)
+blm2 <- glm(bwtcata ~ smoke, family = binomial, data = lowbwt1b)
+blm2
+summary(blm2)
+```
+
+
+### g1 (> 3500) vs g4 (<= 2500)
+
+```{r}
+lowbwt1c <- lowbwt1[lowbwt1$bwtcata == "> 3500"|lowbwt1$bwtcata == "<= 2500",]
+freq(lowbwt1c$bwtcata)
+blm3 <- glm(bwtcata ~ smoke, family = binomial, data = lowbwt1c)
+blm3
+summary(blm3)
+```
+
+## continuation ratio
+
+### g1 vs g2
+
+```{r}
+cr1 <- blm1
+cr1
+summary(cr1)
+```
+
+### g1 + g2 vs g3
+
+```{r}
+lowbwt2a <- lowbwt1[lowbwt1$bwtcata=="> 3500"|lowbwt1$bwtcata=="3001 - 3500"|lowbwt1$bwtcata=="2501 - 3000",]
+freq(lowbwt2a)
+lowbwt2a$bwtcata1 <- ifelse(lowbwt2a$bwtcata=="> 3500", 0,
+                           ifelse(lowbwt2a$bwtcata=="3001 - 3500", 0,1))
+freq(lowbwt2a$bwtcata1)
+cr2 <- glm(bwtcata1 ~ smoke, family = binomial, data = lowbwt2a)
+cr2
+summary(cr2)
+```
+
+### g1+g2+g3 vs g4
+
+```{r}
+lowbwt2b <- lowbwt1
+freq(lowbwt2b)
+lowbwt2b$bwtcata1 <- ifelse(lowbwt2b$bwtcata=="> 3500", 0,
+                           ifelse(lowbwt2b$bwtcata=="3001 - 3500", 0,
+                                  ifelse(lowbwt2b$bwtcata=="2501 - 3000", 0,1)))
+freq(lowbwt2b$bwtcata1)
+cr3 <- glm(bwtcata1 ~ smoke, family = binomial, data = lowbwt2b)
+cr3
+summary(cr3)
+```
+
+
