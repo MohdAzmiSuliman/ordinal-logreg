@@ -1,0 +1,137 @@
+---
+title: "ordinal logistic regression practical"
+author: "Azmi"
+date: "22/02/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# environment
+
+```{r}
+library(pacman)
+p_load(tidyverse, ordinal, summarytools, knitr, broom)
+```
+
+# Tutorial 1
+
+## dataset
+
+```{r}
+dataset <- wine
+head(dataset)
+descr(dataset)
+freq(dataset)
+```
+
+### ordinal::wine dataset
+
+response - scoring of wine bitterness (numerical)
+rating - ordered factors of response in 5 level (categorical - ordinal)
+temp - temperature - cold vs warm (categorical)
+contact - no vs yes (categorical)
+bottle - 1 - 8 (categorical)
+judge - 1 - 9 (categorical)
+
+## short practical
+
+```{r}
+levels(dataset$rating)
+olrmod1 <- clm(rating ~ temp + contact, data = dataset)
+summary(olrmod1)
+tidy(olrmod1, conf.int = T)
+tidy(olrmod1, conf.int = T, exponentiate = T)
+```
+
+note:
+
+- beta coefficient is contant but alpha (threshold coefficient) change for each pair of comparison
+- the comparison is compared to bigger level
+
+###fitted data
+
+```{r}
+fitprob.olrmod1 <- augment(olrmod1, conf.int = T)
+head(fitprob.olrmod1)
+fitcat.olrmod1 <- augment(olrmod1, type.predict = "class")
+head(fitcat.olrmod1)
+```
+
+
+```{r}
+crostab.olrmod1 <- table(fitcat.olrmod1$rating, fitcat.olrmod1$.fitted)
+chisq.test(fitcat.olrmod1$rating, fitcat.olrmod1$.fitted)
+```
+
+###prediction
+
+```{r}
+newdata <- expand.grid(temp = levels(dataset$temp), contact = levels(dataset$contact))
+fitprob.newdata <- augment(olrmod1, newdata = newdata, type.predict= "prob") ##same with predict(..., type = "prob")
+fitclass.newdata <- augment(olrmod1, newdata = newdata, type.predict= "class") ##same with predict(..., type = "class")
+```
+
+- LP
+note: no augment function for lp
+```{r}
+lp.newdata <- predict(olrmod1, newdata = newdata, type = "linear.predictor")
+cbind(newdata, lp.newdata)
+```
+
+### proportional odds assumption checking
+
+- check for proportional odds for variable contact, and compare with model that have both temp and contact
+
+```{r}
+olrmod1_nom <- clm(rating~temp, nominal = ~contact, data = dataset)
+anova(olrmod1,olrmod1_nom)
+```
+
+- p = 0.904 --> not significant --> assumption met (proportionality does present for variable contact)
+
+
+## another package --> MASS
+
+# Tutorial 2
+
+## dataset
+
+```{r}
+library(haven)
+lowbwt <- read_dta("lowbwt.dta")
+head(lowbwt)
+```
+
+Variables
+
+- lbw: low birth weight
+  - 0 - >= 2500g (no)
+  - 1 - < 2500g (yes)
+- age: age of mother
+- lwt: weight mohter at last menstrual period (pounds)
+- race: 
+  - 1 - white
+  - 2 - black
+  - 3 - other
+- smoke: smoking status during pregnancy
+  - 0 - no
+  - 1 - yes
+- history of prem labour
+  - 0 - none
+  - 1 - one
+  - 2 - two, etc
+- hyper: history of hpt
+  - 0 - no
+  - 1 - yes
+- urirr: uterine irritability
+  - 0 - no
+  - 1 - yes
+- pvft: no. of physician visit during 1st trimester
+  - 0 - none
+  - 1 - 1
+  - 2 - 2, etc
+  
+  
