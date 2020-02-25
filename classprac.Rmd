@@ -107,7 +107,7 @@ head(lowbwt)
 descr(lowbwt)
 freq(lowbwt)
 lowbwt1 <- lowbwt %>% 
-  select(smoke, weight) %>% 
+  select(smoke, weight, lwt) %>% 
   mutate(bwtcat = cut(weight,
                       breaks = c(0,2500,3000,3500, 5000),
                       labels = c("<= 2500", "2501 - 3000", "3001 - 3500", "> 3500")))
@@ -228,3 +228,60 @@ summary(cr3)
 ```
 
 
+# Tutorial 3
+
+## cumulative logit models = proportional odds model
+
+```{r}
+levels(lowbwt1$bwtcat)
+descr(lowbwt1$weight)
+```
+
+```{r}
+levels(lowbwt1$bwtcat)
+clmmod1 <- clm(bwtcat ~ lwt, data = lowbwt1)
+clmmod1
+summary(clmmod1)
+```
+
+```{r}
+tidy(clmmod1, conf.int = T)
+tidy(clmmod1, conf.int = T, exponentiate = T)
+```
+
+### fitted data - probability
+
+```{r}
+fitted_clm <- augment(clmmod1)
+fitted_clm
+```
+
+
+
+## plor package - Proportional Odds Linear Regression
+
+```{r}
+library(MASS)
+polr_cr3 <- polr(bwtcat ~ lwt, data = lowbwt1, Hess = T)
+polr_cr3
+summary(polr_cr3)
+```
+
+```{r}
+tidy(polr_cr3)
+tidy(polr_cr3, exponentiate = T)
+```
+
+### proportional odds assumption
+
+```{r}
+library(brant)
+brant(polr_cr3)
+```
+
+### fitted data - probability
+
+```{r}
+fitted_polr_cr3 <- predict(polr_cr3, type = "p")
+head(fitted_polr_cr3)
+```
