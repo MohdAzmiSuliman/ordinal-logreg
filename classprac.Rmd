@@ -38,6 +38,8 @@ judge - 1 - 9 (categorical)
 
 ## short practical
 
+analysis using proportional odds model or cummulative logit model
+
 ```{r}
 levels(dataset$rating)
 olrmod1 <- clm(rating ~ temp + contact, data = dataset)
@@ -48,7 +50,8 @@ tidy(olrmod1, conf.int = T, exponentiate = T)
 
 note:
 
-- beta coefficient is contant but alpha (threshold coefficient) change for each pair of comparison
+- beta coefficient is contant but alpha change for each pair of comparison
+- however alpha (intercept) was not reported here. only SAS report intercept value
 - the comparison is compared to bigger level
 
 ###fitted data
@@ -81,19 +84,57 @@ lp.newdata <- predict(olrmod1, newdata = newdata, type = "linear.predictor")
 cbind(newdata, lp.newdata)
 ```
 
+LP - use eta1.x value
+eta2.x value??
+
+### lp using newdata
+
+```{r}
+newdata
+lp.newdata
+coef_olrmod1 <- coef(olrmod1)
+coef_olrmod1
+
+lp_olrmod1_betax <- coef_olrmod1[5]*0 + coef_olrmod1[6]*0 
+lp_olrmod1_betax
+```
+
+
 ### proportional odds assumption checking
 
 - check for proportional odds for variable contact, and compare with model that have both temp and contact
 
 ```{r}
-olrmod1_nom <- clm(rating~temp, nominal = ~contact, data = dataset)
-anova(olrmod1,olrmod1_nom)
+olrmod1_connom <- clm(rating~temp, nominal = ~contact, data = dataset)
+anova(olrmod1, olrmod1_connom)
+
+olrmod1_tempnom <- clm(rating~contact, nominal = ~temp, data = dataset)
+anova(olrmod1, olrmod1_tempnom)
+
 ```
 
 - p = 0.904 --> not significant --> assumption met (proportionality does present for variable contact)
 
+ANOVA here is compare loglikelihood
+
+
 
 ## another package --> MASS
+
+```{r}
+library(MASS)
+wine_polr <- polr(rating ~ temp + contact, data = dataset)
+wine_polr
+summary(wine_polr)
+```
+
+predict probability
+```{r}
+prob_winepolr <- augment(wine_polr, type.predict = "probs")
+prob_winepolr
+```
+
+
 
 # Tutorial 2
 
@@ -111,6 +152,7 @@ lowbwt1 <- lowbwt %>%
   mutate(bwtcat = cut(weight,
                       breaks = c(0,2500,3000,3500, 5000),
                       labels = c("<= 2500", "2501 - 3000", "3001 - 3500", "> 3500")))
+lev <- c('>3500','3001-3500','2501-3000','=<2500')
 ```
 
 
@@ -154,6 +196,18 @@ lowbwt1$bwtcata <- ordered(lowbwt1$bwtcat, levels=c("> 3500", "3001 - 3500", "25
 freq(lowbwt1$bwtcata)
 freq(lowbwt1$bwtcat)
 ```
+
+## adjacent model
+
+```{r}
+library(VGAM)
+lowbwt1a <- lowbwt1a %>%
+  mutate(bwtnoord = fct_relevel(bwtcat, lev))
+levels(lowbwt1a$bwtnoord)
+ajm_bwt <- vglm(bwtnoord ~ smoke, multinomial, data=lowbwt1a)
+summary(ajm_bwt)
+```
+
 
 ## multinomial or baseline logit model
 
